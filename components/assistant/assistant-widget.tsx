@@ -7,6 +7,7 @@ import { X, MessageCircle, Settings, Minimize2, Maximize2 } from "lucide-react"
 import { ChatInterface } from "./chat-interface"
 import { VoiceControls } from "./voice-controls"
 import { VoiceSelector } from "./voice-selector"
+import { useAuth } from "@/hooks/use-auth"
 
 interface Message {
   id: string
@@ -16,6 +17,7 @@ interface Message {
 }
 
 export function AssistantWidget() {
+  const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -74,12 +76,22 @@ export function AssistantWidget() {
     setMessages(prev => [...prev, userMessage])
 
     try {
+      // Convert messages to API format and include conversation history
+      const conversationHistory = messages.map(msg => ({
+        role: msg.sender as 'user' | 'assistant',
+        content: msg.content
+      }))
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message })
+        body: JSON.stringify({ 
+          message,
+          messages: conversationHistory,
+          user: user || null
+        })
       })
 
       if (!response.ok) {
@@ -275,6 +287,7 @@ export function AssistantWidget() {
               variant="ghost"
               size="sm"
               onClick={toggleMinimize}
+              aria-label={isMinimized ? "Maximize widget" : "Minimize widget"}
             >
               {isMinimized ? (
                 <Maximize2 className="w-4 h-4" />
@@ -286,6 +299,7 @@ export function AssistantWidget() {
               variant="ghost"
               size="sm"
               onClick={toggleWidget}
+              aria-label="Close widget"
             >
               <X className="w-4 h-4" />
             </Button>

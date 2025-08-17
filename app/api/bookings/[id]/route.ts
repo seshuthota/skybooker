@@ -1,9 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getDB, getBookingById, updateBooking } from "@/lib/services/database-service"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const bookings = JSON.parse(globalThis.localStorage?.getItem("skyBooker_bookings") || "[]")
-    const booking = bookings.find((b: any) => b.id === params.id)
+    // Initialize database
+    await getDB();
+    
+    const booking = await getBookingById(params.id)
 
     if (!booking) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 })
@@ -18,17 +21,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const updates = await request.json()
-    const bookings = JSON.parse(globalThis.localStorage?.getItem("skyBooker_bookings") || "[]")
+    
+    // Initialize database
+    await getDB();
 
-    const bookingIndex = bookings.findIndex((b: any) => b.id === params.id)
-    if (bookingIndex === -1) {
+    const booking = await getBookingById(params.id);
+    if (!booking) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 })
     }
 
-    bookings[bookingIndex] = { ...bookings[bookingIndex], ...updates, updatedAt: new Date().toISOString() }
-    globalThis.localStorage?.setItem("skyBooker_bookings", JSON.stringify(bookings))
+    const updatedBooking = await updateBooking(params.id, updates)
 
-    return NextResponse.json({ booking: bookings[bookingIndex] })
+    return NextResponse.json({ booking: updatedBooking })
   } catch (error) {
     return NextResponse.json({ error: "Failed to update booking" }, { status: 500 })
   }
@@ -36,14 +40,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const bookings = JSON.parse(globalThis.localStorage?.getItem("skyBooker_bookings") || "[]")
-    const filteredBookings = bookings.filter((b: any) => b.id !== params.id)
+    // Initialize database
+    await getDB();
 
-    if (bookings.length === filteredBookings.length) {
+    const booking = await getBookingById(params.id);
+    if (!booking) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 })
     }
 
-    globalThis.localStorage?.setItem("skyBooker_bookings", JSON.stringify(filteredBookings))
+    await updateBooking(params.id, { status: "cancelled" })
 
     return NextResponse.json({ message: "Booking cancelled successfully" })
   } catch (error) {

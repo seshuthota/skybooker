@@ -178,6 +178,7 @@ export function VoiceControls({
         variant={isMuted ? "destructive" : "outline"}
         size="sm"
         onClick={onToggleMute}
+        aria-label={isMuted ? "Unmute audio" : "Mute audio"}
       >
         {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
       </Button>

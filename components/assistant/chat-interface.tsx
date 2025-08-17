@@ -70,7 +70,7 @@ export function ChatInterface({
                   message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
                 }`}
               >
-                <Avatar className="w-7 h-7 flex-shrink-0">
+                <Avatar className="w-7 h-7 flex-shrink-0" data-testid={`avatar-${message.sender}`}>
                   <AvatarFallback>
                     {message.sender === 'user' ? (
                       <User className="w-3.5 h-3.5" />
@@ -133,12 +133,15 @@ export function ChatInterface({
             placeholder="Type your message or use voice..."
             disabled={isProcessing}
             className="flex-1 h-9"
+            type="text"
           />
           <Button
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || isProcessing}
             size="sm"
             className="h-9 w-9 p-0"
+            type="button"
+            aria-label="Send message"
           >
             <Send className="w-4 h-4" />
           </Button>

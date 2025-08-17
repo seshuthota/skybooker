@@ -1,14 +1,15 @@
 "use client"
 
-import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 interface User {
   id: string
   email: string
   firstName: string
   lastName: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface AuthContextType {
@@ -24,80 +25,88 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
-    // Check for existing session on mount
-    const savedUser = localStorage.getItem("skyBooker_user")
-    if (savedUser) {
-      setUser(JSON.parse(savedUser))
+    // Check for existing session
+    const token = localStorage.getItem("skyBooker_token")
+    if (token) {
+      // In a real app, we would verify the token with the backend
+      // For now, we'll just check if there's user data
+      const userData = localStorage.getItem("skyBooker_user")
+      if (userData) {
+        setUser(JSON.parse(userData))
+      }
     }
     setIsLoading(false)
   }, [])
 
   const signIn = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
 
-    // Check if user exists in localStorage (simulating database)
-    const users = JSON.parse(localStorage.getItem("skyBooker_users") || "[]")
-    const existingUser = users.find((u: any) => u.email === email && u.password === password)
+      const data = await response.json()
 
-    if (existingUser) {
-      const userData = {
-        id: existingUser.id,
-        email: existingUser.email,
-        firstName: existingUser.firstName,
-        lastName: existingUser.lastName,
+      if (response.ok) {
+        setUser(data.user)
+        localStorage.setItem("skyBooker_token", data.token)
+        localStorage.setItem("skyBooker_user", JSON.stringify(data.user))
+        return true
+      } else {
+        console.error("Sign in failed:", data.error)
+        return false
       }
-      setUser(userData)
-      localStorage.setItem("skyBooker_user", JSON.stringify(userData))
-      return true
+    } catch (error) {
+      console.error("Sign in error:", error)
+      return false
     }
-
-    return false
   }
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password, firstName, lastName }),
+      })
 
-    // Check if user already exists
-    const users = JSON.parse(localStorage.getItem("skyBooker_users") || "[]")
-    const existingUser = users.find((u: any) => u.email === email)
+      const data = await response.json()
 
-    if (existingUser) {
+      if (response.ok) {
+        setUser(data.user)
+        localStorage.setItem("skyBooker_token", data.token)
+        localStorage.setItem("skyBooker_user", JSON.stringify(data.user))
+        return true
+      } else {
+        console.error("Sign up failed:", data.error)
+        return false
+      }
+    } catch (error) {
+      console.error("Sign up error:", error)
       return false
     }
-
-    // Create new user
-    const newUser = {
-      id: Date.now().toString(),
-      email,
-      password,
-      firstName,
-      lastName,
-    }
-
-    users.push(newUser)
-    localStorage.setItem("skyBooker_users", JSON.stringify(users))
-
-    const userData = {
-      id: newUser.id,
-      email: newUser.email,
-      firstName: newUser.firstName,
-      lastName: newUser.lastName,
-    }
-    setUser(userData)
-    localStorage.setItem("skyBooker_user", JSON.stringify(userData))
-    return true
   }
 
   const signOut = () => {
     setUser(null)
+    localStorage.removeItem("skyBooker_token")
     localStorage.removeItem("skyBooker_user")
+    router.push("/auth/signin")
   }
 
-  return <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

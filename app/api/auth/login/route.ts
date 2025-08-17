@@ -1,15 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getDB, getUserByEmail } from "@/lib/services/database-service"
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    // In a real app, this would validate against a database
-    // For now, we'll simulate user validation
-    const users = JSON.parse(globalThis.localStorage?.getItem("skyBooker_users") || "[]")
-    const user = users.find((u: any) => u.email === email && u.password === password)
+    // Initialize database
+    await getDB();
 
-    if (!user) {
+    // Validate user against database
+    const user = await getUserByEmail(email)
+
+    if (!user || user.password !== password) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 

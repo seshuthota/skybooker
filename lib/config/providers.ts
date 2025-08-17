@@ -29,9 +29,13 @@ export const PROVIDERS: Record<string, LLMProvider> = {
     baseUrl: 'https://api.openai.com/v1',
     models: [
       { value: 'gpt-4o', label: 'GPT-4o', maxTokens: 4096, description: 'Latest multimodal model' },
+      { value: 'gpt-4o-mini', label: 'GPT-4o Mini', maxTokens: 16384, description: 'Fast and cost-effective' },
       { value: 'gpt-4-turbo', label: 'GPT-4 Turbo', maxTokens: 4096, description: 'High-performance model' },
+      { value: 'gpt-4-turbo-preview', label: 'GPT-4 Turbo Preview', maxTokens: 4096, description: 'Latest preview' },
+      { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', maxTokens: 16384, description: 'Latest mini model' },
       { value: 'gpt-4', label: 'GPT-4', maxTokens: 8192, description: 'Advanced reasoning' },
       { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', maxTokens: 4096, description: 'Fast and efficient' },
+      { value: 'gpt-3.5-turbo-16k', label: 'GPT-3.5 Turbo 16K', maxTokens: 16384, description: 'Extended context' },
     ],
     defaultModel: 'gpt-3.5-turbo',
     apiKeyEnvVar: 'OPENAI_API_KEY',

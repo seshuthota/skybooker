@@ -53,6 +53,7 @@ export function VoiceSelector({
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1"
+        aria-label="Voice settings"
       >
         <Settings className="w-3 h-3" />
         {!isOpen && (
@@ -120,6 +121,7 @@ export function VoiceSelector({
                 onClick={onTestVoice}
                 disabled={isPlaying}
                 className="text-xs h-8"
+                aria-label="Test voice"
               >
                 {isPlaying ? 'Playing...' : 'Test'}
               </Button>

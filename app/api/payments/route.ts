@@ -1,8 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getDB, createPaymentMethod } from "@/lib/services/database-service"
 
 export async function POST(request: NextRequest) {
   try {
     const { amount, paymentMethod, bookingId, userId } = await request.json()
+
+    // Initialize database
+    await getDB();
 
     // Simulate payment processing
     const paymentId = `PAY_${Date.now()}`
@@ -17,6 +21,22 @@ export async function POST(request: NextRequest) {
       status: "completed",
       transactionId: `TXN_${Date.now()}`,
       processedAt: new Date().toISOString(),
+    }
+
+    // If this is a request to save a payment method, save it to the database
+    if (paymentMethod.saveForLater) {
+      const paymentMethodData = {
+        id: `PM_${Date.now()}`,
+        userId,
+        cardType: paymentMethod.cardType,
+        last4: paymentMethod.last4,
+        expiryMonth: paymentMethod.expiryMonth,
+        expiryYear: paymentMethod.expiryYear,
+        cardName: paymentMethod.cardName,
+        createdAt: new Date().toISOString(),
+      }
+
+      await createPaymentMethod(paymentMethodData)
     }
 
     return NextResponse.json({ payment })
