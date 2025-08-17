@@ -264,6 +264,132 @@ export function RealtimeVoiceAgent({
     )
   }
 
+  const isEmbedded = className.includes('border-0') || className.includes('shadow-none')
+
+  if (isEmbedded) {
+    // Embedded mode (within another widget)
+    return (
+      <div className={`${className} space-y-4`}>
+        {/* Error Display */}
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Audio Level Indicator */}
+        {sessionState.isListening && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Microphone Level</span>
+              <span className="text-muted-foreground">{Math.round(sessionState.audioLevel)}%</span>
+            </div>
+            <Progress value={sessionState.audioLevel} className="h-2" />
+          </div>
+        )}
+
+        {/* Session Controls */}
+        <div className="flex items-center justify-center gap-4">
+          {sessionState.connectionState === 'disconnected' ? (
+            <Button 
+              onClick={startSession}
+              className="flex items-center gap-2"
+              size="lg"
+            >
+              <Phone className="h-5 w-5" />
+              Start Voice Session
+            </Button>
+          ) : (
+            <>
+              <Button
+                onClick={toggleListening}
+                variant={sessionState.isListening ? "default" : "outline"}
+                size="lg"
+                className="flex items-center gap-2"
+                disabled={sessionState.connectionState !== 'connected'}
+              >
+                {sessionState.isListening ? (
+                  <>
+                    <Mic className="h-5 w-5" />
+                    Listening...
+                  </>
+                ) : (
+                  <>
+                    <MicOff className="h-5 w-5" />
+                    Click to Talk
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={endSession}
+                variant="destructive"
+                size="lg"
+                className="flex items-center gap-2"
+              >
+                <PhoneOff className="h-5 w-5" />
+                End Session
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Speaking Indicator */}
+        {sessionState.isSpeaking && (
+          <div className="flex items-center justify-center gap-2 text-blue-600">
+            <div className="animate-pulse">
+              <MessageSquare className="h-5 w-5" />
+            </div>
+            <span className="text-sm font-medium">Maya is speaking...</span>
+          </div>
+        )}
+
+        {/* Conversation History */}
+        {showTranscript && sessionState.conversationHistory.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Conversation</h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowTranscript(!showTranscript)}
+                className="text-xs"
+              >
+                Hide Transcript
+              </Button>
+            </div>
+            
+            <div className="max-h-60 overflow-y-auto space-y-2 p-3 bg-muted/30 rounded-md">
+              {sessionState.conversationHistory.map((message) => (
+                <div
+                  key={message.id}
+                  className={`text-sm p-2 rounded ${
+                    message.type === 'user'
+                      ? 'bg-blue-100 text-blue-900 ml-8'
+                      : 'bg-gray-100 text-gray-900 mr-8'
+                  }`}
+                >
+                  <div className="font-medium text-xs mb-1">
+                    {message.type === 'user' ? 'You' : message.agentName || 'Maya'}
+                  </div>
+                  <div>{message.content}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Session Info */}
+        {sessionState.sessionId && (
+          <div className="text-xs text-muted-foreground text-center">
+            Session: {sessionState.sessionId}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Standalone mode (original card layout)
   return (
     <Card className={`${className} w-full max-w-2xl mx-auto`}>
       <CardHeader className="pb-4">
