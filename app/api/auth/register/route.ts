@@ -1,31 +1,39 @@
 import { type NextRequest, NextResponse } from "next/server"
+import bcrypt from "bcryptjs"
+import { getDB, getUserByEmail, createUser } from "@/lib/services/database-service"
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password, firstName, lastName } = await request.json()
 
-    // In a real app, this would save to a database
-    const users = JSON.parse(globalThis.localStorage?.getItem("skyBooker_users") || "[]")
+    // Initialize database
+    await getDB();
 
     // Check if user already exists
-    if (users.find((u: any) => u.email === email)) {
+    const existingUser = await getUserByEmail(email)
+    
+    if (existingUser) {
       return NextResponse.json({ error: "User already exists" }, { status: 400 })
     }
+
+    // Hash password before storing
+    const saltRounds = 12
+    const hashedPassword = await bcrypt.hash(password, saltRounds)
 
     const newUser = {
       id: Date.now().toString(),
       email,
-      password, // In real app, hash this
+      password: hashedPassword,
       firstName,
       lastName,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
 
-    users.push(newUser)
-    globalThis.localStorage?.setItem("skyBooker_users", JSON.stringify(users))
+    const user = await createUser(newUser)
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = newUser
+    const { password: _, ...userWithoutPassword } = user
 
     return NextResponse.json({
       user: userWithoutPassword,

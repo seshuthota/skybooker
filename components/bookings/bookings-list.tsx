@@ -21,10 +21,30 @@ export function BookingsList() {
     }
 
     if (user) {
-      // Get user's bookings from localStorage
-      const allBookings = JSON.parse(localStorage.getItem("skyBooker_bookings") || "[]")
-      const userBookings = allBookings.filter((booking: any) => booking.userId === user.id)
-      setBookings(userBookings)
+      // Fetch user's bookings from API
+      const fetchBookings = async () => {
+        try {
+          const token = localStorage.getItem("skyBooker_token")
+          const response = await fetch("/api/bookings", {
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            setBookings(data.bookings || [])
+          } else {
+            console.error("Failed to fetch bookings")
+            setBookings([])
+          }
+        } catch (error) {
+          console.error("Error fetching bookings:", error)
+          setBookings([])
+        }
+      }
+      
+      fetchBookings()
     }
   }, [user, isLoading, router])
 

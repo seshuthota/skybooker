@@ -22,16 +22,49 @@ export function SavedPaymentMethods() {
 
   useEffect(() => {
     if (user) {
-      const cards = JSON.parse(localStorage.getItem(`skyBooker_cards_${user.id}`) || "[]")
-      setSavedCards(cards)
+      const fetchPaymentMethods = async () => {
+        try {
+          const token = localStorage.getItem("skyBooker_token")
+          const response = await fetch(`/api/users/${user.id}/payment-methods`, {
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            setSavedCards(data.paymentMethods || [])
+          }
+        } catch (error) {
+          console.error('Error fetching payment methods:', error)
+          setSavedCards([])
+        }
+      }
+      
+      fetchPaymentMethods()
     }
   }, [user])
 
-  const removeCard = (cardId: string) => {
-    const updatedCards = savedCards.filter((card) => card.id !== cardId)
-    setSavedCards(updatedCards)
-    if (user) {
-      localStorage.setItem(`skyBooker_cards_${user.id}`, JSON.stringify(updatedCards))
+  const removeCard = async (cardId: string) => {
+    try {
+      const token = localStorage.getItem("skyBooker_token")
+      const response = await fetch(`/api/users/${user?.id}/payment-methods`, {
+        method: 'DELETE',
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ paymentMethodId: cardId })
+      })
+      
+      if (response.ok) {
+        const updatedCards = savedCards.filter((card) => card.id !== cardId)
+        setSavedCards(updatedCards)
+      } else {
+        console.error('Failed to remove payment method')
+      }
+    } catch (error) {
+      console.error('Error removing payment method:', error)
     }
   }
 

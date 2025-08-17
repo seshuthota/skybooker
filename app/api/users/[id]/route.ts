@@ -1,9 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getDB, getUserById, updateUser } from "@/lib/services/database-service"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const users = JSON.parse(globalThis.localStorage?.getItem("skyBooker_users") || "[]")
-    const user = users.find((u: any) => u.id === params.id)
+    // Initialize database
+    await getDB();
+    
+    const user = await getUserById(params.id);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
@@ -21,18 +24,19 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const updates = await request.json()
-    const users = JSON.parse(globalThis.localStorage?.getItem("skyBooker_users") || "[]")
-
-    const userIndex = users.findIndex((u: any) => u.id === params.id)
-    if (userIndex === -1) {
+    
+    // Initialize database
+    await getDB();
+    
+    const user = await getUserById(params.id);
+    if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    users[userIndex] = { ...users[userIndex], ...updates, updatedAt: new Date().toISOString() }
-    globalThis.localStorage?.setItem("skyBooker_users", JSON.stringify(users))
+    const updatedUser = await updateUser(params.id, { ...updates, updatedAt: new Date().toISOString() })
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = users[userIndex]
+    const { password: _, ...userWithoutPassword } = updatedUser
 
     return NextResponse.json({ user: userWithoutPassword })
   } catch (error) {

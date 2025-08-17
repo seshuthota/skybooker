@@ -1,15 +1,25 @@
 import { type NextRequest, NextResponse } from "next/server"
+import bcrypt from "bcryptjs"
+import { getDB, getUserByEmail } from "@/lib/services/database-service"
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    // In a real app, this would validate against a database
-    // For now, we'll simulate user validation
-    const users = JSON.parse(globalThis.localStorage?.getItem("skyBooker_users") || "[]")
-    const user = users.find((u: any) => u.email === email && u.password === password)
+    // Initialize database
+    await getDB();
+
+    // Validate user against database
+    const user = await getUserByEmail(email)
 
     if (!user) {
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+    }
+
+    // Compare password with hashed password
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+
+    if (!isPasswordValid) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 

@@ -16,10 +16,45 @@ export function BookingConfirmation({ bookingId }: BookingConfirmationProps) {
   const [booking, setBooking] = useState<any>(null)
 
   useEffect(() => {
-    // Get booking from localStorage
-    const bookings = JSON.parse(localStorage.getItem("skyBooker_bookings") || "[]")
-    const foundBooking = bookings.find((b: any) => b.id === bookingId)
-    setBooking(foundBooking)
+    // Fetch booking from database via API
+    const fetchBooking = async () => {
+      try {
+        // Use token-based authentication
+        const token = localStorage.getItem("skyBooker_token")
+        if (!token) {
+          console.error('No authentication token found')
+          return
+        }
+        
+        const response = await fetch('/api/bookings', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log('[BOOKING_CONFIRMATION] All bookings:', data.bookings)
+          console.log('[BOOKING_CONFIRMATION] Looking for booking ID:', bookingId)
+          console.log('[BOOKING_CONFIRMATION] Decoded booking ID:', decodeURIComponent(bookingId))
+          
+          // Try to find booking with both original and decoded ID
+          let foundBooking = data.bookings.find((b: any) => b.id === bookingId)
+          if (!foundBooking) {
+            foundBooking = data.bookings.find((b: any) => b.id === decodeURIComponent(bookingId))
+          }
+          
+          console.log('[BOOKING_CONFIRMATION] Found booking:', foundBooking)
+          setBooking(foundBooking)
+        } else {
+          console.error('Failed to fetch bookings')
+        }
+      } catch (error) {
+        console.error('Error fetching booking:', error)
+      }
+    }
+    
+    fetchBooking()
   }, [bookingId])
 
   if (!booking) {
@@ -39,7 +74,7 @@ export function BookingConfirmation({ bookingId }: BookingConfirmationProps) {
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
           <h1 className="text-3xl font-serif font-bold text-foreground mb-2">Booking Confirmed!</h1>
           <p className="text-muted-foreground">
-            Your flight has been successfully booked. A confirmation email has been sent to {booking.passenger.email}
+            Your flight has been successfully booked. A confirmation email has been sent to {booking.contactInfo?.email}
           </p>
         </div>
 
@@ -95,7 +130,7 @@ export function BookingConfirmation({ bookingId }: BookingConfirmationProps) {
               </div>
               <div>
                 <div className="text-sm text-muted-foreground mb-1">Stops</div>
-                <div className="font-medium">{booking.flight.stops}</div>
+                <div className="font-medium">Non-stop</div>
               </div>
             </div>
           </CardContent>
@@ -112,20 +147,20 @@ export function BookingConfirmation({ bookingId }: BookingConfirmationProps) {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Name</span>
               <span className="font-medium">
-                {booking.passenger.firstName} {booking.passenger.lastName}
+                {booking.passengers?.[0]?.firstName} {booking.passengers?.[0]?.lastName}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Email</span>
-              <span className="font-medium">{booking.passenger.email}</span>
+              <span className="font-medium">{booking.contactInfo?.email}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Phone</span>
-              <span className="font-medium">{booking.passenger.phone}</span>
+              <span className="font-medium">{booking.contactInfo?.phone}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Passport</span>
-              <span className="font-medium">{booking.passenger.passportNumber}</span>
+              <span className="font-medium">{booking.passengers?.[0]?.passportNumber || 'N/A'}</span>
             </div>
           </CardContent>
         </Card>
@@ -145,7 +180,7 @@ export function BookingConfirmation({ bookingId }: BookingConfirmationProps) {
             </div>
             <div className="flex justify-between">
               <span>Flight Price</span>
-              <span>${booking.flight.price}</span>
+              <span>${booking.totalPrice - 89}</span>
             </div>
             <div className="flex justify-between">
               <span>Taxes & Fees</span>
@@ -154,7 +189,7 @@ export function BookingConfirmation({ bookingId }: BookingConfirmationProps) {
             <Separator />
             <div className="flex justify-between font-bold text-lg">
               <span>Total Paid</span>
-              <span className="text-primary">${booking.totalPrice + 89}</span>
+              <span className="text-primary">${booking.totalPrice}</span>
             </div>
           </CardContent>
         </Card>

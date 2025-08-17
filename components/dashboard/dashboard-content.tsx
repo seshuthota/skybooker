@@ -41,6 +41,7 @@ export function DashboardContent() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([])
   const [stats, setStats] = useState({
     activeBookings: 0,
     pastTrips: 0,
@@ -58,31 +59,69 @@ export function DashboardContent() {
 
   useEffect(() => {
     if (user) {
-      // Get user's bookings
-      const allBookings = JSON.parse(localStorage.getItem("skyBooker_bookings") || "[]")
-      const userBookings = allBookings.filter((booking: Booking) => booking.userId === user.id)
-      setBookings(userBookings)
+      // Get user's bookings from database
+      const fetchBookings = async () => {
+        try {
+          const response = await fetch(`/api/bookings?userId=${user.id}`)
+          if (response.ok) {
+            const data = await response.json()
+            setBookings(data.bookings || [])
+          } else {
+            console.error('Failed to fetch bookings')
+            setBookings([])
+          }
+        } catch (error) {
+          console.error('Error fetching bookings:', error)
+          setBookings([])
+        }
+      }
+      
+      fetchBookings()
 
-      // Get saved cards
-      const savedCards = JSON.parse(localStorage.getItem(`skyBooker_cards_${user.id}`) || "[]")
+      // Fetch saved cards from API
+      const fetchSavedCards = async () => {
+        try {
+          const token = localStorage.getItem("skyBooker_token")
+          const response = await fetch(`/api/users/${user.id}/payment-methods`, {
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            setPaymentMethods(data.paymentMethods || [])
+          }
+        } catch (error) {
+          console.error('Error fetching payment methods:', error)
+          setPaymentMethods([])
+        }
+      }
+      
+      fetchSavedCards()
+    }
+  }, [user])
 
+  // Calculate stats whenever bookings or payment methods change
+  useEffect(() => {
+    if (bookings.length > 0 || paymentMethods.length > 0) {
       // Calculate stats
       const now = new Date()
-      const activeBookings = userBookings.filter((booking: Booking) => {
+      const activeBookings = bookings.filter((booking: Booking) => {
         const flightDate = new Date(booking.flight.departure.date)
         return flightDate >= now && booking.status === "confirmed"
       })
 
-      const pastTrips = userBookings.filter((booking: Booking) => {
+      const pastTrips = bookings.filter((booking: Booking) => {
         const flightDate = new Date(booking.flight.departure.date)
         return flightDate < now && booking.status === "confirmed"
       })
 
-      const totalSpent = userBookings.reduce((sum: number, booking: Booking) => sum + (booking.totalPrice + 89), 0)
+      const totalSpent = bookings.reduce((sum: number, booking: Booking) => sum + booking.totalPrice, 0)
 
       // Calculate favorite destination
       const destinations: Record<string, number> = {}
-      userBookings.forEach((booking: Booking) => {
+      bookings.forEach((booking: Booking) => {
         const dest = booking.flight.arrival.city
         destinations[dest] = (destinations[dest] || 0) + 1
       })
@@ -97,13 +136,13 @@ export function DashboardContent() {
       setStats({
         activeBookings: activeBookings.length,
         pastTrips: pastTrips.length,
-        savedCards: savedCards.length,
+        savedCards: paymentMethods.length,
         totalSpent,
         favoriteDestination,
         milesFlown,
       })
     }
-  }, [user])
+  }, [bookings, paymentMethods, user])
 
   if (isLoading) {
     return (

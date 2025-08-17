@@ -176,26 +176,61 @@ export function FlightBookingForm({ flightId }: FlightBookingFormProps) {
         totalPrice: mockFlight.price,
       }
 
-      // Save to localStorage (simulating database)
-      const existingBookings = JSON.parse(localStorage.getItem("skyBooker_bookings") || "[]")
-      existingBookings.push(booking)
-      localStorage.setItem("skyBooker_bookings", JSON.stringify(existingBookings))
+      // Save booking via API
+      const token = localStorage.getItem("skyBooker_token")
+      const bookingResponse = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          flightId: mockFlight.id,
+          passengers: [
+            {
+              firstName: passengerInfo.firstName,
+              lastName: passengerInfo.lastName,
+              dateOfBirth: passengerInfo.dateOfBirth,
+              passportNumber: passengerInfo.passportNumber
+            }
+          ],
+          contactInfo: {
+            email: contactInfo.email,
+            phone: contactInfo.phone
+          },
+          paymentMethodId: paymentMethod === "card" ? "temp_card_id" : "paypal"
+        })
+      })
+
+      let bookingData = booking
+      if (bookingResponse.ok) {
+        const apiResult = await bookingResponse.json()
+        bookingData = apiResult.booking || booking
+      }
 
       // Save payment method if requested
       if (savePaymentMethod && paymentMethod === "card") {
-        const savedCards = JSON.parse(localStorage.getItem(`skyBooker_cards_${user?.id}`) || "[]")
-        savedCards.push({
-          id: Date.now().toString(),
-          last4: paymentInfo.cardNumber.slice(-4),
-          cardType: getCardType(paymentInfo.cardNumber),
-          expiryMonth: paymentInfo.expiryMonth,
-          expiryYear: paymentInfo.expiryYear,
-          cardName: paymentInfo.cardName,
-        })
-        localStorage.setItem(`skyBooker_cards_${user?.id}`, JSON.stringify(savedCards))
+        try {
+          await fetch(`/api/users/${user?.id}/payment-methods`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              last4: paymentInfo.cardNumber.slice(-4),
+              cardType: getCardType(paymentInfo.cardNumber),
+              expiryMonth: paymentInfo.expiryMonth,
+              expiryYear: paymentInfo.expiryYear,
+              cardName: paymentInfo.cardName,
+            })
+          })
+        } catch (error) {
+          console.error('Failed to save payment method:', error)
+        }
       }
 
-      router.push(`/bookings/confirmation/${booking.id}`)
+      router.push(`/bookings/confirmation/${bookingData.id}`)
     } catch (error) {
       console.error("Booking failed:", error)
     } finally {
