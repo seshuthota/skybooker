@@ -19,15 +19,18 @@ export function BookingConfirmation({ bookingId }: BookingConfirmationProps) {
     // Fetch booking from database via API
     const fetchBooking = async () => {
       try {
-        // We need to get the user ID first (from auth context or localStorage)
-        const userData = localStorage.getItem("skyBooker_user")
-        if (!userData) {
-          console.error('No user data found')
+        // Use token-based authentication
+        const token = localStorage.getItem("skyBooker_token")
+        if (!token) {
+          console.error('No authentication token found')
           return
         }
         
-        const user = JSON.parse(userData)
-        const response = await fetch(`/api/bookings?userId=${user.id}`)
+        const response = await fetch('/api/bookings', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
         
         if (response.ok) {
           const data = await response.json()

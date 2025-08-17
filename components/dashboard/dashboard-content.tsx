@@ -41,6 +41,7 @@ export function DashboardContent() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([])
   const [stats, setStats] = useState({
     activeBookings: 0,
     pastTrips: 0,
@@ -77,14 +78,33 @@ export function DashboardContent() {
       
       fetchBookings()
 
-      // Get saved cards
-      const savedCards = JSON.parse(localStorage.getItem(`skyBooker_cards_${user.id}`) || "[]")
+      // Fetch saved cards from API
+      const fetchSavedCards = async () => {
+        try {
+          const token = localStorage.getItem("skyBooker_token")
+          const response = await fetch(`/api/users/${user.id}/payment-methods`, {
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            setPaymentMethods(data.paymentMethods || [])
+          }
+        } catch (error) {
+          console.error('Error fetching payment methods:', error)
+          setPaymentMethods([])
+        }
+      }
+      
+      fetchSavedCards()
     }
   }, [user])
 
-  // Calculate stats whenever bookings change
+  // Calculate stats whenever bookings or payment methods change
   useEffect(() => {
-    if (bookings.length > 0) {
+    if (bookings.length > 0 || paymentMethods.length > 0) {
       // Calculate stats
       const now = new Date()
       const activeBookings = bookings.filter((booking: Booking) => {
@@ -113,19 +133,16 @@ export function DashboardContent() {
       // Estimate miles flown (rough calculation)
       const milesFlown = pastTrips.length * 3500 // Average flight distance
 
-      // Get saved cards (this still uses localStorage for now)
-      const savedCards = JSON.parse(localStorage.getItem(`skyBooker_cards_${user?.id}`) || "[]")
-
       setStats({
         activeBookings: activeBookings.length,
         pastTrips: pastTrips.length,
-        savedCards: savedCards.length,
+        savedCards: paymentMethods.length,
         totalSpent,
         favoriteDestination,
         milesFlown,
       })
     }
-  }, [bookings, user])
+  }, [bookings, paymentMethods, user])
 
   if (isLoading) {
     return (

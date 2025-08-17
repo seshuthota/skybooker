@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import bcrypt from "bcryptjs"
 import { getDB, getUserByEmail } from "@/lib/services/database-service"
 
 export async function POST(request: NextRequest) {
@@ -11,7 +12,14 @@ export async function POST(request: NextRequest) {
     // Validate user against database
     const user = await getUserByEmail(email)
 
-    if (!user || user.password !== password) {
+    if (!user) {
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+    }
+
+    // Compare password with hashed password
+    const isPasswordValid = await bcrypt.compare(password, user.password)
+
+    if (!isPasswordValid) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 

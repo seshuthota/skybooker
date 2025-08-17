@@ -7,21 +7,9 @@ import {
   cancelBookingSchema,
 } from '../validation';
 import { FunctionCallContext } from '@/lib/functions/types';
-import { getDB, createBooking as dbCreateBooking, getBookingsByUserId } from '@/lib/services/database-service';
+import { getDB, createBooking as dbCreateBooking, getBookingsByUserId, getBookingById, updateBooking } from '@/lib/services/database-service';
 
-// Helper functions for localStorage persistence
-function getBookingsFromStorage(): any[] {
-  if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
-    return JSON.parse(globalThis.localStorage.getItem("skyBooker_bookings") || "[]")
-  }
-  return []
-}
-
-function saveBookingsToStorage(bookings: any[]): void {
-  if (typeof globalThis !== 'undefined' && globalThis.localStorage) {
-    globalThis.localStorage.setItem("skyBooker_bookings", JSON.stringify(bookings))
-  }
-}
+// Note: localStorage functions removed - now using database service
 
 async function getUserBookingsAPI(userId: string, query: z.infer<typeof getUserBookingsSchema>) {
   // Initialize database and get bookings
@@ -183,15 +171,17 @@ async function createBookingAPI(userId: string, bookingDetails: z.infer<typeof c
 }
 
 async function cancelBookingAPI(userId: string, bookingId: string) {
-  // Get bookings from localStorage
-  const allBookings = getBookingsFromStorage()
-  const bookingIndex = allBookings.findIndex(b => b.userId === userId && b.id === bookingId);
-  if (bookingIndex === -1) {
+  // Initialize database and update booking status
+  await getDB();
+  const booking = await getBookingById(bookingId);
+  
+  if (!booking || booking.userId !== userId) {
     return { error: 'Booking not found' };
   }
-  allBookings[bookingIndex].status = 'cancelled';
-  saveBookingsToStorage(allBookings);
-  return { success: true, booking: allBookings[bookingIndex] };
+  
+  // Update booking status to cancelled
+  const updatedBooking = await updateBooking(bookingId, { status: 'cancelled' });
+  return { success: true, booking: updatedBooking };
 }
 
 export async function getUserBookings(

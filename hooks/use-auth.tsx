@@ -28,17 +28,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem("skyBooker_token")
-    if (token) {
-      // In a real app, we would verify the token with the backend
-      // For now, we'll just check if there's user data
-      const userData = localStorage.getItem("skyBooker_user")
-      if (userData) {
-        setUser(JSON.parse(userData))
+    // Check for existing session and validate token with backend
+    const validateSession = async () => {
+      const token = localStorage.getItem("skyBooker_token")
+      if (token) {
+        try {
+          // Verify token by fetching user data from database
+          const response = await fetch("/api/users/me", {
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          })
+          
+          if (response.ok) {
+            const userData = await response.json()
+            setUser(userData.user)
+          } else {
+            // Token is invalid, clear it
+            localStorage.removeItem("skyBooker_token")
+            localStorage.removeItem("skyBooker_user")
+          }
+        } catch (error) {
+          console.error("Session validation error:", error)
+          // Clear invalid session data
+          localStorage.removeItem("skyBooker_token")
+          localStorage.removeItem("skyBooker_user")
+        }
       }
+      setIsLoading(false)
     }
-    setIsLoading(false)
+    
+    validateSession()
   }, [])
 
   const signIn = async (email: string, password: string): Promise<boolean> => {

@@ -74,14 +74,14 @@ export async function getUserInfo(
 }
 
 /**
- * Fetch user data from storage (simulates database call)
- * In production, this would be a proper database query
+ * Fetch user data from database
  */
 async function fetchUserFromStorage(userId: string): Promise<Partial<UserInfo> | null> {
   try {
-    // Simulate the same localStorage approach used in the auth endpoints
-    const users = JSON.parse(globalThis.localStorage?.getItem("skyBooker_users") || "[]")
-    const user = users.find((u: any) => u.id === userId)
+    // Import database service and fetch user
+    const { getDB, getUserById } = await import('@/lib/services/database-service')
+    await getDB()
+    const user = await getUserById(userId)
 
     if (!user) {
       return null

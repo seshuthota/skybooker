@@ -56,9 +56,9 @@ export async function authenticateUser(request: NextRequest): Promise<AuthResult
 
     const userId = token.substring(6) // Remove 'token_' prefix
     
-    // Fetch user from storage (in real app, this would be database)
-    const users = JSON.parse(globalThis.localStorage?.getItem("skyBooker_users") || "[]")
-    const user = users.find((u: any) => u.id === userId)
+    // Fetch user from database
+    const { getUserById } = await import('@/lib/services/database-service')
+    const user = await getUserById(userId)
 
     if (!user) {
       return {
