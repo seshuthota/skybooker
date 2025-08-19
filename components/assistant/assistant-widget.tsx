@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { X, MessageCircle, Settings, Minimize2, Maximize2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { X, MessageCircle, Minimize2, Maximize2, Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX } from "lucide-react"
 import { ChatInterface } from "./chat-interface"
-import { VoiceControls } from "./voice-controls"
-import { VoiceSelector } from "./voice-selector"
+import { useRealtimeSession } from "@/app/hooks/useRealtimeSession"
 
 interface Message {
   id: string
@@ -16,24 +16,64 @@ interface Message {
 }
 
 export function AssistantWidget() {
-  const [isOpen, setIsOpen] = useState(false)
+  console.log('[AssistantWidget] Component mounting...')
+  
+  const [isOpen, setIsOpen] = useState(process.env.NEXT_PUBLIC_E2E_OPEN === '1')
   const [isMinimized, setIsMinimized] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
-  const [isMuted, setIsMuted] = useState(false)
-  const [isListening, setIsListening] = useState(false)
-  const [isSpeaking, setIsSpeaking] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedVoice, setSelectedVoice] = useState('af_bella')
   const [currentProvider, setCurrentProvider] = useState('')
+  
+  // Unified voice session state
+  const {
+    status: voiceStatus,
+    listening,
+    muted,
+    error: voiceError,
+    transcript,
+    audioLevel,
+    connect: connectVoice,
+    disconnect: disconnectVoice,
+    toggleListening,
+    toggleMute,
+    sendText,
+  } = useRealtimeSession()
+
+  // Append realtime transcript into the same chat list
+  const lastTranscriptCount = useRef(0)
+  useEffect(() => {
+    if (transcript.length > lastTranscriptCount.current) {
+      const newItems = transcript.slice(lastTranscriptCount.current)
+      lastTranscriptCount.current = transcript.length
+      setMessages(prev => ([
+        ...prev,
+        ...newItems.map(t => ({
+          id: `${t.timestamp}-${Math.random().toString(36).slice(2,7)}`,
+          content: t.content,
+          sender: t.role,
+          timestamp: t.timestamp,
+        }))
+      ]))
+    }
+  }, [transcript])
 
   useEffect(() => {
+    console.log('[AssistantWidget] Initializing widget...')
+    
     // Fetch provider info and add welcome message
     const initializeWidget = async () => {
       try {
+        console.log('[AssistantWidget] Fetching config...')
         const response = await fetch('/api/config')
+        
+        if (!response.ok) {
+          throw new Error(`Config API failed: ${response.status}`)
+        }
+        
         const config = await response.json()
-        setCurrentProvider(config.provider.name)
+        console.log('[AssistantWidget] Config received:', config)
+        setCurrentProvider(config.provider?.name || 'Unknown')
         
         const welcomeMessage: Message = {
           id: 'welcome',
@@ -42,8 +82,11 @@ export function AssistantWidget() {
           timestamp: Date.now()
         }
         setMessages([welcomeMessage])
+        console.log('[AssistantWidget] Welcome message added')
       } catch (error) {
-        console.error('Failed to fetch config:', error)
+        console.error('[AssistantWidget] Failed to fetch config:', error)
+        setCurrentProvider('OpenAI')
+        
         const welcomeMessage: Message = {
           id: 'welcome',
           content: "Hi! I'm Maya. How can I assist you today?",
@@ -51,6 +94,7 @@ export function AssistantWidget() {
           timestamp: Date.now()
         }
         setMessages([welcomeMessage])
+        console.log('[AssistantWidget] Fallback welcome message added')
       }
     }
     
@@ -59,151 +103,16 @@ export function AssistantWidget() {
 
   const handleSendMessage = async (message: string) => {
     if (isProcessing) return
-    
-    console.log('Sending message:', message)
     setIsProcessing(true)
     setError(null)
-
-    // Add user message to chat
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: message,
-      sender: 'user',
-      timestamp: Date.now()
-    }
-    setMessages(prev => [...prev, userMessage])
-
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message })
-      })
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`)
-      }
-
-      const data = await response.json()
-      console.log('Received response:', data)
-
-      // Add assistant response to chat
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: data.message || 'Sorry, I didn\'t receive a proper response.',
-        sender: 'assistant',
-        timestamp: Date.now()
-      }
-      setMessages(prev => [...prev, assistantMessage])
-
-      // Try to synthesize speech (optional)
-      if (!isMuted && data.message) {
-        await synthesizeSpeech(data.message)
-      }
-
-    } catch (error) {
-      console.error('Failed to send message:', error)
+      await Promise.resolve(sendText(message))
+    } catch (e) {
+      console.error('Failed to send text via realtime:', e)
       setError('Failed to send message. Please try again.')
-      
-      // Add error message to chat
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: 'Sorry, I encountered an error. Please try again.',
-        sender: 'assistant',
-        timestamp: Date.now()
-      }
-      setMessages(prev => [...prev, errorMessage])
     } finally {
       setIsProcessing(false)
     }
-  }
-
-  const synthesizeSpeech = async (text: string) => {
-    try {
-      setIsSpeaking(true)
-      console.log('Synthesizing speech for:', text.substring(0, 50) + '...')
-      
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          text,
-          voice: selectedVoice,
-          format: 'mp3'
-        })
-      })
-
-      if (!response.ok) {
-        console.warn('TTS request failed:', response.status)
-        return
-      }
-
-      const contentType = response.headers.get('content-type')
-      console.log('TTS response content-type:', contentType)
-
-      if (contentType?.includes('audio')) {
-        const audioBlob = await response.blob()
-        console.log('Received audio blob size:', audioBlob.size)
-        
-        if (audioBlob.size > 0) {
-          const audioUrl = URL.createObjectURL(audioBlob)
-          const audio = new Audio(audioUrl)
-          
-          audio.onloadeddata = () => {
-            console.log('Audio loaded, duration:', audio.duration)
-          }
-          
-          audio.onended = () => {
-            setIsSpeaking(false)
-            URL.revokeObjectURL(audioUrl)
-            console.log('Audio playback ended')
-          }
-          
-          audio.onerror = (e) => {
-            console.error('Audio playback error:', e)
-            setIsSpeaking(false)
-            URL.revokeObjectURL(audioUrl)
-          }
-          
-          try {
-            await audio.play()
-            console.log('Audio playback started')
-          } catch (playError) {
-            console.error('Audio play failed:', playError)
-          }
-        }
-      } else {
-        // Handle JSON response (TTS service unavailable)
-        const data = await response.json()
-        console.log('TTS service response:', data.message)
-      }
-    } catch (error) {
-      console.warn('TTS synthesis failed:', error)
-    } finally {
-      if (!isSpeaking) {
-        setIsSpeaking(false)
-      }
-    }
-  }
-
-  const handleVoiceTranscription = (text: string) => {
-    handleSendMessage(text)
-  }
-
-  const handleStartListening = () => {
-    setIsListening(true)
-  }
-
-  const handleStopListening = () => {
-    setIsListening(false)
-  }
-
-  const handleToggleMute = () => {
-    setIsMuted(!isMuted)
   }
 
   const handleClearConversation = () => {
@@ -216,15 +125,8 @@ export function AssistantWidget() {
     setError(null)
   }
 
-  const handleVoiceChange = (voice: string) => {
-    setSelectedVoice(voice)
-  }
-
-  const handleTestVoice = async () => {
-    await synthesizeSpeech("Hello! This is a test of the selected voice.")
-  }
-
   const toggleWidget = () => {
+    console.log('[AssistantWidget] Toggling widget, current state:', isOpen)
     setIsOpen(!isOpen)
   }
 
@@ -238,6 +140,7 @@ export function AssistantWidget() {
         <Button
           onClick={toggleWidget}
           className="w-14 h-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg"
+          data-testid="assistant-open"
         >
           <MessageCircle className="w-6 h-6" />
         </Button>
@@ -253,43 +156,87 @@ export function AssistantWidget() {
           : 'w-[420px] h-[700px]'
       }`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-              <MessageCircle className="w-3.5 h-3.5 text-primary" />
+        <div className="flex flex-col gap-2 p-3 border-b">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                <MessageCircle className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Maya Assistant</h3>
+                {!isMinimized && (
+                  <p className="text-xs text-muted-foreground">
+                    {isProcessing ? 'Thinking…' : 'Type or speak — one thread'}
+                  </p>
+                )}
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-sm">Maya Assistant</h3>
-              {!isMinimized && (
-                <p className="text-xs text-muted-foreground">
-                  {isProcessing ? 'Thinking...' : 
-                   isSpeaking ? 'Speaking...' : 
-                   isListening ? 'Listening...' : 'Ready to help'}
-                </p>
-              )}
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={toggleMinimize}>
+                {isMinimized ? (
+                  <Maximize2 className="w-4 h-4" />
+                ) : (
+                  <Minimize2 className="w-4 h-4" />
+                )}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={toggleWidget}>
+                <X className="w-4 h-4" />
+              </Button>
             </div>
           </div>
-          
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleMinimize}
-            >
-              {isMinimized ? (
-                <Maximize2 className="w-4 h-4" />
-              ) : (
-                <Minimize2 className="w-4 h-4" />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleWidget}
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+
+          {/* Unified Voice Controls */}
+          {!isMinimized && (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {voiceStatus === 'connected' || voiceStatus === 'ready' ? (
+                  <Button size="sm" variant="destructive" onClick={disconnectVoice}>
+                    <PhoneOff className="w-4 h-4 mr-2" /> Disconnect
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={connectVoice}>
+                    <Phone className="w-4 h-4 mr-2" /> Connect Voice
+                  </Button>
+                )}
+
+                <Button
+                  size="sm"
+                  variant={muted ? 'destructive' : 'outline'}
+                  onClick={toggleMute}
+                  disabled={!(voiceStatus === 'connected' || voiceStatus === 'ready')}
+                >
+                  {muted ? <VolumeX className="w-4 h-4 mr-2" /> : <Volume2 className="w-4 h-4 mr-2" />} 
+                  {muted ? 'Muted' : 'Mute'}
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={toggleListening}
+                  disabled={!(voiceStatus === 'connected' || voiceStatus === 'ready')}
+                >
+                  {listening ? (<><MicOff className="w-4 h-4 mr-2" /> Stop Listening</>) : (<><Mic className="w-4 h-4 mr-2" /> Start Listening</>)}
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex items-end gap-0.5 h-5">
+                  {Array.from({ length: 8 }).map((_, i) => {
+                    const active = i < Math.round(Math.max(0, Math.min(1, audioLevel)) * 8)
+                    const height = 2 + i * 1.6
+                    return (
+                      <div key={i} className="w-1.5 rounded-sm" style={{ height: `${height}px`, backgroundColor: active && listening ? '#2563eb' : '#e5e7eb', opacity: active ? 1 : 0.5 }} />
+                    )
+                  })}
+                </div>
+                <Badge variant={voiceStatus === 'ready' ? 'default' : voiceStatus === 'connected' ? 'secondary' : voiceStatus === 'error' ? 'destructive' : 'outline'}>
+                  {voiceStatus === 'ready' ? 'Voice: Ready' : voiceStatus.charAt(0).toUpperCase() + voiceStatus.slice(1)}
+                </Badge>
+              </div>
+            </div>
+          )}
+          {voiceError && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">{voiceError}</div>
+          )}
         </div>
 
         {/* Content */}
@@ -302,20 +249,7 @@ export function AssistantWidget() {
               </div>
             )}
 
-            {/* Voice Controls */}
-            <div className="border-b p-2">
-              <VoiceControls
-                isListening={isListening}
-                isSpeaking={isSpeaking}
-                onStartListening={handleStartListening}
-                onStopListening={handleStopListening}
-                onTranscriptionReceived={handleVoiceTranscription}
-                onToggleMute={handleToggleMute}
-                isMuted={isMuted}
-              />
-            </div>
-
-            {/* Chat Interface */}
+            {/* Unified Chat + Transcript */}
             <div className="flex-1 flex flex-col min-h-0">
               <ChatInterface
                 messages={messages}
@@ -334,12 +268,7 @@ export function AssistantWidget() {
               >
                 Clear Chat
               </Button>
-              <VoiceSelector
-                selectedVoice={selectedVoice}
-                onVoiceChange={handleVoiceChange}
-                onTestVoice={handleTestVoice}
-                isPlaying={isSpeaking}
-              />
+              <div className="text-xs text-muted-foreground px-2">Type or speak — one thread</div>
             </div>
           </>
         )}

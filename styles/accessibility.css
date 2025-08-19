@@ -1,0 +1,391 @@
+/**
+ * Accessibility Styles
+ * CSS for accessibility features and enhancements
+ */
+
+/* Screen Reader Only Content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* High Contrast Mode */
+.high-contrast {
+  --accessibility-bg-primary: #000000;
+  --accessibility-bg-secondary: #1a1a1a;
+  --accessibility-text-primary: #ffffff;
+  --accessibility-text-secondary: #e0e0e0;
+  --accessibility-border: #666666;
+  --accessibility-accent: #00ff00;
+  --accessibility-error: #ff4444;
+  --accessibility-warning: #ffff00;
+  --accessibility-success: #00ff00;
+}
+
+.high-contrast * {
+  background-color: var(--accessibility-bg-primary) !important;
+  color: var(--accessibility-text-primary) !important;
+  border-color: var(--accessibility-border) !important;
+}
+
+.high-contrast .bg-white,
+.high-contrast .bg-gray-50,
+.high-contrast .bg-gray-100 {
+  background-color: var(--accessibility-bg-secondary) !important;
+}
+
+.high-contrast .text-muted-foreground,
+.high-contrast .text-gray-500,
+.high-contrast .text-gray-600 {
+  color: var(--accessibility-text-secondary) !important;
+}
+
+.high-contrast .text-blue-600,
+.high-contrast .text-green-600,
+.high-contrast .text-purple-600 {
+  color: var(--accessibility-accent) !important;
+}
+
+.high-contrast .text-red-600,
+.high-contrast .text-red-700 {
+  color: var(--accessibility-error) !important;
+}
+
+.high-contrast .text-yellow-600,
+.high-contrast .text-orange-600 {
+  color: var(--accessibility-warning) !important;
+}
+
+.high-contrast button,
+.high-contrast .btn {
+  background-color: var(--accessibility-bg-secondary) !important;
+  border: 2px solid var(--accessibility-border) !important;
+  color: var(--accessibility-text-primary) !important;
+}
+
+.high-contrast button:hover,
+.high-contrast .btn:hover {
+  background-color: var(--accessibility-accent) !important;
+  color: var(--accessibility-bg-primary) !important;
+}
+
+.high-contrast button:focus,
+.high-contrast .btn:focus {
+  outline: 3px solid var(--accessibility-accent) !important;
+  outline-offset: 2px !important;
+}
+
+/* Reduced Motion */
+.reduced-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+.reduced-motion .animate-spin,
+.reduced-motion .animate-pulse,
+.reduced-motion .animate-bounce {
+  animation: none !important;
+}
+
+.reduced-motion .transition-all,
+.reduced-motion .transition-colors,
+.reduced-motion .transition-opacity {
+  transition: none !important;
+}
+
+/* Large Text Scaling */
+.large-text {
+  font-size: calc(1rem * var(--accessibility-text-scale, 1));
+}
+
+.large-text h1 {
+  font-size: calc(2.25rem * var(--accessibility-text-scale, 1));
+}
+
+.large-text h2 {
+  font-size: calc(1.875rem * var(--accessibility-text-scale, 1));
+}
+
+.large-text h3 {
+  font-size: calc(1.5rem * var(--accessibility-text-scale, 1));
+}
+
+.large-text h4 {
+  font-size: calc(1.25rem * var(--accessibility-text-scale, 1));
+}
+
+.large-text .text-sm {
+  font-size: calc(0.875rem * var(--accessibility-text-scale, 1));
+}
+
+.large-text .text-xs {
+  font-size: calc(0.75rem * var(--accessibility-text-scale, 1));
+}
+
+/* Focus Indicators */
+*:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+.high-contrast *:focus {
+  outline: 3px solid var(--accessibility-accent) !important;
+  outline-offset: 3px !important;
+}
+
+/* Skip Links */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 1000;
+  border-radius: 4px;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Voice Interface Accessibility */
+.voice-interface {
+  --voice-success: #10b981;
+  --voice-warning: #f59e0b;
+  --voice-error: #ef4444;
+  --voice-info: #3b82f6;
+}
+
+.voice-status-indicator {
+  position: relative;
+}
+
+.voice-status-indicator::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.voice-status-connected::after {
+  background: var(--voice-success);
+  animation: pulse 2s infinite;
+}
+
+.voice-status-connecting::after {
+  background: var(--voice-warning);
+  animation: blink 1s infinite;
+}
+
+.voice-status-error::after {
+  background: var(--voice-error);
+}
+
+.voice-status-disconnected::after {
+  background: #6b7280;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+/* Audio Level Visualization Accessibility */
+.audio-bars {
+  display: flex;
+  align-items: end;
+  gap: 2px;
+  height: 32px;
+}
+
+.audio-bar {
+  width: 4px;
+  background: #d1d5db;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+}
+
+.audio-bar.active {
+  background: var(--voice-success);
+}
+
+.audio-bar.speaking {
+  background: var(--voice-info);
+}
+
+.high-contrast .audio-bar {
+  background: var(--accessibility-border) !important;
+}
+
+.high-contrast .audio-bar.active {
+  background: var(--accessibility-accent) !important;
+}
+
+/* Keyboard Navigation Hints */
+.keyboard-hint {
+  position: relative;
+}
+
+.keyboard-hint::before {
+  content: attr(data-shortcut);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 1000;
+}
+
+.keyboard-hint:hover::before,
+.keyboard-hint:focus::before {
+  opacity: 1;
+}
+
+/* Error and Status Messages */
+.status-message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  border-left: 4px solid;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.status-message.success {
+  background: #f0fdf4;
+  border-color: var(--voice-success);
+  color: #166534;
+}
+
+.status-message.warning {
+  background: #fffbeb;
+  border-color: var(--voice-warning);
+  color: #92400e;
+}
+
+.status-message.error {
+  background: #fef2f2;
+  border-color: var(--voice-error);
+  color: #991b1b;
+}
+
+.status-message.info {
+  background: #eff6ff;
+  border-color: var(--voice-info);
+  color: #1e40af;
+}
+
+.high-contrast .status-message {
+  background: var(--accessibility-bg-secondary) !important;
+  color: var(--accessibility-text-primary) !important;
+  border-color: var(--accessibility-accent) !important;
+}
+
+/* Responsive Voice Interface */
+@media (max-width: 768px) {
+  .voice-interface {
+    padding: 12px;
+  }
+  
+  .audio-bars {
+    height: 24px;
+  }
+  
+  .audio-bar {
+    width: 3px;
+  }
+}
+
+@media (max-width: 480px) {
+  .large-text {
+    font-size: calc(1rem * var(--accessibility-text-scale, 1.1));
+  }
+}
+
+/* Print Styles for Voice Transcripts */
+@media print {
+  .voice-interface {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .audio-bars,
+  .voice-controls,
+  .accessibility-panel {
+    display: none !important;
+  }
+  
+  .conversation-history {
+    border: 1px solid #ccc;
+    padding: 16px;
+  }
+  
+  .message {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .message:last-child {
+    border-bottom: none;
+  }
+}
+
+/* Dark Mode Compatibility */
+@media (prefers-color-scheme: dark) {
+  :root:not(.high-contrast) {
+    --voice-interface-bg: #1f2937;
+    --voice-interface-text: #f9fafb;
+    --voice-interface-border: #374151;
+  }
+}
+
+/* Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  .voice-status-connected::after {
+    animation: none;
+  }
+  
+  .voice-status-connecting::after {
+    animation: none;
+  }
+  
+  .audio-bar {
+    transition: none;
+  }
+}

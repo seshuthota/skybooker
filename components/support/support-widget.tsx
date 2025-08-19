@@ -1,7 +1,7 @@
 "use client"
 
-import { EnhancedAssistantWidget } from "@/components/assistant/enhanced-assistant-widget"
+import { AssistantWidget } from "@/components/assistant/assistant-widget"
 
 export function SupportWidget() {
-  return <EnhancedAssistantWidget />
+  return <AssistantWidget />
 }

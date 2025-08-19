@@ -2,7 +2,9 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Source_Sans_3, Playfair_Display } from "next/font/google"
 import "./globals.css"
+import "../styles/accessibility.css"
 import { AuthProvider } from "@/hooks/use-auth"
+import { AccessibilityProvider } from "@/components/voice/accessibility-manager"
 import { SupportWidget } from "@/components/support/support-widget"
 
 const sourceSans = Source_Sans_3({
@@ -31,10 +33,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${sourceSans.variable} ${playfairDisplay.variable} antialiased`}>
       <body>
-        <AuthProvider>
-          {children}
-          <SupportWidget />
-        </AuthProvider>
+        <AccessibilityProvider>
+          <AuthProvider>
+            {children}
+            <SupportWidget />
+          </AuthProvider>
+        </AccessibilityProvider>
       </body>
     </html>
   )

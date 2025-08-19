@@ -4,12 +4,48 @@
 
 export interface VoiceSessionState {
   sessionId: string | null
-  connectionState: 'disconnected' | 'connecting' | 'connected' | 'error'
+  connectionState: ConnectionState
+  connectionDetails: ConnectionDetails
   isListening: boolean
   isSpeaking: boolean
   currentAgent: string | null
   conversationHistory: ConversationMessage[]
   audioLevel: number
+  audioQuality: AudioQualityMetrics
+  lastActivity: Date | null
+}
+
+export type ConnectionState = 
+  | 'disconnected'
+  | 'initializing' 
+  | 'requesting_permissions'
+  | 'connecting'
+  | 'connected'
+  | 'ready'
+  | 'reconnecting'
+  | 'error'
+  | 'degraded'
+
+export interface ConnectionDetails {
+  attempts: number
+  lastError: VoiceError | null
+  connectedAt: Date | null
+  reconnectDelay: number
+  maxReconnectAttempts: number
+  isReconnecting: boolean
+  connectionQuality: 'poor' | 'fair' | 'good' | 'excellent'
+  latency: number
+}
+
+export interface AudioQualityMetrics {
+  inputLevel: number
+  outputLevel: number
+  noiseLevel: number
+  signalToNoise: number
+  latency: number
+  jitter: number
+  packetsLost: number
+  connectionStability: number
 }
 
 export interface ConversationMessage {
@@ -149,8 +185,17 @@ export interface VoiceAnalytics {
 // Event types for voice session
 export type VoiceSessionEvent = 
   | { type: 'CONNECT_START' }
+  | { type: 'PERMISSIONS_REQUESTED' }
+  | { type: 'PERMISSIONS_GRANTED' }
+  | { type: 'PERMISSIONS_DENIED'; error: VoiceError }
+  | { type: 'CONNECTING' }
   | { type: 'CONNECT_SUCCESS'; sessionId: string }
   | { type: 'CONNECT_ERROR'; error: VoiceError }
+  | { type: 'CONNECTION_READY' }
+  | { type: 'CONNECTION_DEGRADED'; quality: 'poor' | 'fair' }
+  | { type: 'RECONNECTING'; attempt: number }
+  | { type: 'RECONNECT_SUCCESS' }
+  | { type: 'RECONNECT_FAILED'; error: VoiceError }
   | { type: 'DISCONNECT' }
   | { type: 'START_LISTENING' }
   | { type: 'STOP_LISTENING' }
@@ -159,8 +204,16 @@ export type VoiceSessionEvent =
   | { type: 'MESSAGE_RECEIVED'; message: ConversationMessage }
   | { type: 'TOOL_CALL'; toolCall: ToolCall }
   | { type: 'AGENT_HANDOFF'; fromAgent: string; toAgent: string }
-  | { type: 'ERROR'; error: VoiceError }
+  | { type: 'ERROR'; error: VoiceError; errorHandling?: any }
+  | { type: 'CONNECT_ERROR'; error: VoiceError; errorHandling?: any }
   | { type: 'AUDIO_LEVEL_UPDATE'; level: number }
+  | { type: 'AUDIO_QUALITY_UPDATE'; metrics: AudioQualityMetrics }
+  | { type: 'SESSION_TIMEOUT'; inactiveTime: number }
+  | { type: 'SESSION_RECOVERED'; recoveredData: any }
+  | { type: 'ENABLE_TRANSCRIPT' }
+  | { type: 'LOW_BANDWIDTH_MODE_ENABLED' }
+  | { type: 'AUDIO_SYSTEM_RESTARTED' }
+  | { type: 'CONNECTION_OPTIMIZED' }
 
 // Agent specialization types
 export type AgentRole = 'triage' | 'flight_search' | 'booking' | 'support'
